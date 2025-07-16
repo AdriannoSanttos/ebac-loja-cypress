@@ -1,24 +1,23 @@
 /// <reference types="cypress" />
+const { faker } = require('@faker-js/faker')
 
-context('Exercicio - Testes End-to-end - Fluxo de pedido', () => {
+describe('Exercicio - Testes End-to-end - Fluxo de pedido', () => {
   beforeEach(() => {
-    cy.visit('http://lojaebac.ebaconline.art.br/')
+    cy.visit('minha-conta')
   })
 
   it('Deve fazer um pedido na loja Ebac Shop de ponta a ponta', () => {
     // Login como cliente
-    cy.get('.icon-user-unfollow').click()
-    cy.get('#username').type('irmaodojorel@teste.com.br')
-    cy.get('#password').type('teste@001')
-    cy.get('.woocommerce-form > .button').click()
+    cy.fixture('perfil').then(login =>{
+    cy.login(login.usuario, login.senha)
     cy.get('.woocommerce-MyAccount-content > :nth-child(2)').should('contain', 'Olá, irmaodojorel')
-
+})
     
 
     // Produto 1
     cy.get('#primary-menu > .menu-item-629 > a').click()
     cy.get('.post-2559').click()
-    cy.get('.button-variable-item-S').click()
+    cy.get('.button-variable-item-XL').click()
     cy.get('.button-variable-item-Red').click()
     cy.get('.single_add_to_cart_button').click()
     cy.get('.woocommerce-message').should('contain', '“Abominable Hoodie” foi adicionado no seu carrinho.')
@@ -49,24 +48,25 @@ context('Exercicio - Testes End-to-end - Fluxo de pedido', () => {
 
     // Ver carrinho e finalizar pedido
     cy.get('.woocommerce-message > .button').click()
-    cy.get('tbody > :nth-child(1) > .product-name').should('contain', 'Abominable Hoodie - S, Red')
+    cy.get('tbody > :nth-child(1) > .product-name').should('contain', 'Abominable Hoodie - XL, Red')
     cy.get('tbody > :nth-child(2) > .product-name').should('contain', 'Aero Daily Fitness Tee - S, Brown')
     cy.get('tbody > :nth-child(3) > .product-name').should('contain', 'Aether Gym Pant - 32, Brown')
     cy.get('tbody > :nth-child(4) > .product-name').should('contain', 'Ajax Full-Zip Sweatshirt - L, Green')
-    cy.get('.checkout-button').click()
+    cy.get('.checkout-button').click()  
     
-    
+const dadosFake = {
+  nome: faker.person.firstName(),
+  sobrenome: faker.person.lastName(),
+  endereco: faker.location.streetAddress(),
+  cidade: faker.location.city(),
+  cep: faker.location.zipCode('#####-###'),
+  telefone: faker.phone.number('1199#######'),
+  email: faker.internet.email()
+}
 
     // Preencher dados no checkout
-    cy.get('#billing_first_name').clear().type('Jorel')
-    cy.get('#billing_last_name').clear().type('Irmão')
-    cy.get('#billing_address_1').clear().type('Rua do Limoeiro, 123')
-    cy.get('#billing_city').clear().type('São Paulo')
-    cy.get('#billing_postcode').clear().type('12345-000')
-    cy.get('#billing_phone').clear().type('11999999999')
-    cy.get('#billing_email').clear().type('irmaodojorel@teste.com.br')
-    cy.get('#terms').click()
-    cy.get('#place_order').click()
+    cy.checkout(dadosFake)
+
 
     // Validação final
     cy.contains(/obrigado.*pedido foi recebido/i, { timeout: 10000 }).should('be.visible')
