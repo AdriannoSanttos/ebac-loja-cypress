@@ -4,13 +4,13 @@ pipeline {
     stages {
         stage('Instalar dependências') {
             steps {
-                bat 'npm install'
+                sh 'npm install'
             }
         }
 
         stage('Rodar testes Cypress') {
             steps {
-                bat 'npx cypress run'
+                sh 'npx cypress run'
             }
         }
     }
