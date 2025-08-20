@@ -1,18 +1,16 @@
 pipeline {
-    agent {
-        docker { image 'cypress/browsers:node18.19.0-chrome117-ff118' }
-    }
+    agent any
 
     stages {
         stage('Instalar dependências') {
             steps {
-                sh 'npm install'
+                bat 'npm install'
             }
         }
 
         stage('Rodar testes Cypress') {
             steps {
-                sh 'npx cypress run'
+                bat 'npx cypress run'
             }
         }
     }
