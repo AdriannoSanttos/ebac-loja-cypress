@@ -1,5 +1,7 @@
 pipeline {
-    agent any
+    agent {
+        docker { image 'cypress/browsers:node18.19.0-chrome117-ff118' }
+    }
 
     stages {
         stage('Instalar dependências') {
