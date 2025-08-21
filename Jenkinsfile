@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        REPORT_DIR = "${WORKSPACE}/reports"
+        REPORT_DIR = "${WORKSPACE}\\reports"
     }
 
     stages {
@@ -16,20 +16,19 @@ pipeline {
             steps {
                 echo 'Instalando dependências...'
                 bat 'npm install'
+                bat 'npx cypress install'
+                bat "if not exist ${REPORT_DIR} mkdir ${REPORT_DIR}"
             }
         }
 
         stage('Executar testes Cypress') {
             steps {
-                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                    echo 'Instalando binário do Cypress...'
-                    bat 'npx cypress install'
-
-                    echo 'Rodando testes Cypress...'
+                echo 'Rodando testes Cypress...'
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                     bat """
                     npx cypress run ^
                         --reporter mochawesome ^
-                        --reporter-options reportDir=%REPORT_DIR%,overwrite=false,html=false,json=true
+                        --reporter-options reportDir=${REPORT_DIR},overwrite=false,html=false,json=true
                     """
                 }
             }
@@ -39,18 +38,21 @@ pipeline {
             steps {
                 echo 'Gerando relatório PDF a partir do Mochawesome...'
                 bat """
-                npx mochawesome-merge %REPORT_DIR%/*.json > %REPORT_DIR%/mochawesome.json
-                npx marge %REPORT_DIR%/mochawesome.json ^
-                    --reportDir %REPORT_DIR% ^
-                    --reportFilename report ^
-                    --overwrite
+                if exist ${REPORT_DIR}\\*.json (
+                    npx mochawesome-merge ${REPORT_DIR}/*.json > ${REPORT_DIR}/mochawesome.json
+                    npx marge ${REPORT_DIR}/mochawesome.json --reportDir ${REPORT_DIR} --reportFilename report --overwrite
+                ) else (
+                    echo "Nenhum arquivo JSON gerado, pulando merge."
+                )
                 """
             }
         }
 
         stage('Arquivar artifacts') {
             steps {
-                archiveArtifacts artifacts: 'reports/**/*.*', allowEmptyArchive: true
+                echo 'Arquivando reports e vídeos...'
+                archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'cypress/videos/**', allowEmptyArchive: true
             }
         }
     }
