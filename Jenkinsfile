@@ -7,8 +7,9 @@ pipeline {
 
     stages {
 
-        stage('Checkout SCM') {
+        stage('Checkout') {
             steps {
+                echo 'Obtendo repositório do Git...'
                 checkout scm
             }
         }
@@ -16,20 +17,20 @@ pipeline {
         stage('Preparar ambiente') {
             steps {
                 echo 'Limpando pastas antigas e preparando ambiente...'
-                bat 'rmdir /s /q %WORKSPACE%\\reports || exit 0'
-                bat 'mkdir %WORKSPACE%\\reports'
-                bat 'npm install'
+                bat "rmdir /s /q %WORKSPACE%\\reports || exit 0"
+                bat "mkdir %WORKSPACE%\\reports"
+                bat "npm install"
             }
         }
 
         stage('Executar testes Cypress') {
             steps {
                 echo 'Rodando testes Cypress...'
-               
+                
                 bat '''
                 npx cypress run ^
-                  --reporter mochawesome ^
-                  --reporter-options reportDir=%WORKSPACE%\\reports,overwrite=false,html=false,json=true
+                    --reporter mochawesome ^
+                    --reporter-options reportDir=%WORKSPACE%\\reports,overwrite=false,html=false,json=true
                 || exit 0
                 '''
             }
@@ -60,7 +61,7 @@ pipeline {
 
     post {
         always {
-            echo 'Pipeline finalizado'
+            echo 'Pipeline finalizado. Verifique os reports e videos arquivados.'
         }
     }
 }
