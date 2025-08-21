@@ -2,66 +2,53 @@ pipeline {
     agent any
 
     environment {
-        WORKSPACE = "${env.WORKSPACE}"
+        CYPRESS_CACHE_FOLDER = "${WORKSPACE}/.cache"
+        REPORT_DIR = "${WORKSPACE}/reports"
     }
 
     stages {
-
-        stage('Checkout') {
+        stage('Preparar Ambiente') {
             steps {
-                echo 'Obtendo repositório do Git...'
-                checkout scm
-            }
-        }
-
-        stage('Preparar ambiente') {
-            steps {
-                echo 'Limpando pastas antigas e preparando ambiente...'
-                bat "rmdir /s /q %WORKSPACE%\\reports || exit 0"
-                bat "mkdir %WORKSPACE%\\reports"
-                bat "npm install"
+                echo 'Instalando dependências...'
+                bat 'npm install'
             }
         }
 
         stage('Executar testes Cypress') {
             steps {
-                echo 'Rodando testes Cypress...'
                 
-                bat '''
-                npx cypress run ^
-                    --reporter mochawesome ^
-                    --reporter-options reportDir=%WORKSPACE%\\reports,overwrite=false,html=false,json=true
-                || exit 0
-                '''
+                catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    bat """
+                    npx cypress run ^
+                        --reporter mochawesome ^
+                        --reporter-options reportDir=%REPORT_DIR%,overwrite=false,html=false,json=true
+                    """
+                }
             }
         }
 
         stage('Gerar relatório PDF') {
             steps {
-                echo 'Mesclando relatórios JSON e gerando PDF...'
-                bat '''
-                if exist %WORKSPACE%\\reports\\*.json (
-                    npx mochawesome-merge %WORKSPACE%\\reports\\*.json 1>%WORKSPACE%\\reports\\report.json
-                    npx marge %WORKSPACE%\\reports\\report.json -f report -o %WORKSPACE%\\reports
-                ) else (
-                    echo "Nenhum JSON para gerar relatório"
-                )
-                '''
+                echo 'Gerando relatório PDF a partir do Mochawesome...'
+                bat """
+                npx mochawesome-merge %REPORT_DIR%/*.json > %REPORT_DIR%/mochawesome.json
+                npx marge %REPORT_DIR%/mochawesome.json --reportDir %REPORT_DIR% --reportFilename report
+                """
             }
         }
 
         stage('Arquivar artifacts') {
             steps {
-                echo 'Arquivando artifacts e screenshots...'
-                archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
-                archiveArtifacts artifacts: 'cypress/videos/**', allowEmptyArchive: true
+                echo 'Arquivando reports e vídeos...'
+                archiveArtifacts artifacts: 'reports/**/*.*', allowEmptyArchive: true
+                archiveArtifacts artifacts: 'cypress/videos/**/*.*', allowEmptyArchive: true
             }
         }
     }
 
     post {
         always {
-            echo 'Pipeline finalizado. Verifique os reports e videos arquivados.'
+            echo 'Pipeline finalizado. Verifique os reports e vídeos arquivados.'
         }
     }
 }
