@@ -1,40 +1,41 @@
 pipeline {
     agent any
 
-    environment {
-        CYPRESS_CACHE_FOLDER = "${WORKSPACE}\\.cache"
-        REPORTS_DIR = "${WORKSPACE}\\reports"
-    }
-
     stages {
+        stage('Checkout SCM') {
+            steps {
+                checkout scm
+            }
+        }
+
         stage('Preparar ambiente') {
             steps {
-                echo "Limpando pastas antigas e preparando ambiente..."
-                bat 'rmdir /s /q %REPORTS_DIR% || exit 0'
-                bat 'mkdir %REPORTS_DIR%'
+                echo 'Limpando pastas antigas e preparando ambiente...'
+                bat 'rmdir /s /q "%WORKSPACE%\\reports" || exit 0'
+                bat 'mkdir "%WORKSPACE%\\reports"'
                 bat 'npm install'
             }
         }
 
         stage('Executar testes Cypress') {
             steps {
-                echo "Rodando testes Cypress..."
-               
+                echo 'Instalando binário do Cypress e rodando testes...'
+                bat 'npx cypress install'
                 bat '''
                 npx cypress run ^
-                --reporter mochawesome ^
-                --reporter-options reportDir=%REPORTS_DIR%,overwrite=false,html=false,json=true || exit 0
+                  --reporter mochawesome ^
+                  --reporter-options reportDir=%WORKSPACE%\\reports,overwrite=false,html=false,json=true
                 '''
             }
         }
 
         stage('Gerar relatório PDF') {
             steps {
-                echo "Mesclando relatórios JSON e gerando PDF..."
+                echo 'Mesclando relatórios JSON e gerando PDF...'
                 bat '''
-                if exist %REPORTS_DIR%\\*.json (
-                    npx mochawesome-merge %REPORTS_DIR%\\*.json > %REPORTS_DIR%\\report.json
-                    npx marge %REPORTS_DIR%\\report.json -f report -o %REPORTS_DIR%
+                if exist "%WORKSPACE%\\reports\\*.json" (
+                    npx mochawesome-merge "%WORKSPACE%\\reports\\*.json" > "%WORKSPACE%\\reports\\report.json"
+                    npx marge "%WORKSPACE%\\reports\\report.json" -f report -o "%WORKSPACE%\\reports"
                 ) else (
                     echo "Nenhum JSON para gerar relatório"
                 )
@@ -44,9 +45,8 @@ pipeline {
 
         stage('Arquivar artifacts') {
             steps {
-                echo "Arquivando artifacts e screenshots..."
+                echo 'Arquivando artifacts e screenshots...'
                 archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
-                archiveArtifacts artifacts: 'cypress/screenshots/**', allowEmptyArchive: true
                 archiveArtifacts artifacts: 'cypress/videos/**', allowEmptyArchive: true
             }
         }
@@ -55,9 +55,6 @@ pipeline {
     post {
         always {
             echo 'Pipeline finalizado'
-        }
-        failure {
-            echo 'Alguns testes falharam, mas pipeline gerou artifacts para análise'
         }
     }
 }
