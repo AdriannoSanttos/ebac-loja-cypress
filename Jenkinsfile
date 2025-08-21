@@ -2,11 +2,16 @@ pipeline {
     agent any
 
     environment {
-        CYPRESS_CACHE_FOLDER = "${WORKSPACE}/.cache"
         REPORT_DIR = "${WORKSPACE}/reports"
     }
 
     stages {
+        stage('Checkout SCM') {
+            steps {
+                checkout scm
+            }
+        }
+
         stage('Preparar Ambiente') {
             steps {
                 echo 'Instalando dependências...'
@@ -16,8 +21,11 @@ pipeline {
 
         stage('Executar testes Cypress') {
             steps {
-                
                 catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                    echo 'Instalando binário do Cypress...'
+                    bat 'npx cypress install'
+
+                    echo 'Rodando testes Cypress...'
                     bat """
                     npx cypress run ^
                         --reporter mochawesome ^
@@ -32,16 +40,17 @@ pipeline {
                 echo 'Gerando relatório PDF a partir do Mochawesome...'
                 bat """
                 npx mochawesome-merge %REPORT_DIR%/*.json > %REPORT_DIR%/mochawesome.json
-                npx marge %REPORT_DIR%/mochawesome.json --reportDir %REPORT_DIR% --reportFilename report
+                npx marge %REPORT_DIR%/mochawesome.json ^
+                    --reportDir %REPORT_DIR% ^
+                    --reportFilename report ^
+                    --overwrite
                 """
             }
         }
 
         stage('Arquivar artifacts') {
             steps {
-                echo 'Arquivando reports e vídeos...'
                 archiveArtifacts artifacts: 'reports/**/*.*', allowEmptyArchive: true
-                archiveArtifacts artifacts: 'cypress/videos/**/*.*', allowEmptyArchive: true
             }
         }
     }
@@ -52,4 +61,3 @@ pipeline {
         }
     }
 }
-
